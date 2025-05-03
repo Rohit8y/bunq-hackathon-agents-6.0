@@ -1,4 +1,6 @@
 import os
+# import sys
+# sys.path.append(r"C:\Users\junej\OneDrive\Documents\bunq-hackathon-agents-6.0\category_mapping_Co2")
 from typing import Dict
 import asyncio
 from pydantic_ai import Agent, ModelRetry, RunContext
@@ -6,9 +8,10 @@ from pydantic_ai.models.gemini import GeminiModel
 from pydantic import BaseModel
 from httpx import AsyncClient
 from dataclasses import dataclass
-
+from category_mapping_Co2 import CATEGORY_MAPPING, EMISSION_FACTORS_10
 from dotenv import dotenv_values
 from dotenv import load_dotenv
+import pandas as pd
 
 load_dotenv()  # take environment variables
 
@@ -37,24 +40,24 @@ base_agent = Agent(
 )
 
 ###### HELPER FUNCTIONS ######
-def calculate_co2_emissions(spending: Dict[str, float]) -> Dict:
-    EMISSION_FACTORS = {
-        'travel': 0.8,
-        'food': 0.6,
-        'shopping': 0.5,
-        'housing': 0.3,
-        'entertainment': 0.3,
-    }
+def calculate_co2_emissions(spending_by_raw_category: Dict[str, float]) -> Dict:
+    mapped_spending = {}
+
+    for raw_category, amount in spending_by_raw_category.items():
+        broad_cat = CATEGORY_MAPPING.get(raw_category.strip().upper())
+        if broad_cat:
+            mapped_spending[broad_cat] = mapped_spending.get(broad_cat, 0) + amount
 
     co2_total = 0
     breakdown = {}
-    for category, amount in spending.items():
-        factor = EMISSION_FACTORS.get(category, 0)
+
+    for broad_cat, amount in mapped_spending.items():
+        factor = EMISSION_FACTORS_10.get(broad_cat, 0)
         co2 = amount * factor
-        breakdown[category] = {'spend': amount, 'co2': co2}
+        breakdown[broad_cat] = {'spend': amount, 'co2': co2}
         co2_total += co2
 
-    total_spend = sum(spending.values())
+    total_spend = sum(mapped_spending.values())
     co2_per_euro = co2_total / total_spend if total_spend else 0
 
     if co2_per_euro < 0.4:
@@ -76,7 +79,7 @@ def get_user_spending(df: pd.DataFrame, user_id: str) -> Dict[str, float]:
     """
     Aggregates spending by category for a specific user.
     """
-    user_df = df[df['user_id'] == user_id]
+    user_df = df[df['counterparty_name'] == user_id]
     return user_df.groupby('category')['amount'].sum().to_dict()
 ###### END HELPER FUNCTIONS #####
 
@@ -108,14 +111,16 @@ async def main():
         print('Response:', result.output)
 
         ##### CO2 FOOTPRINT #####
-        df = pd.DataFrame(data)
-        selected_user_id = "placeholder"
+        df = pd.read_csv(r"C:\Users\junej\OneDrive\Documents\bunq-hackathon-agents-6.0\transactions.csv")
+        
+        selected_user_id = "John Peter Clarkson"
         user_spending = get_user_spending(df, selected_user_id)
+        print(user_spending)
 
         footprint_result = await base_agent.run(
             f"What is the carbon footprint for this user: {user_spending}", deps=deps
         )
-            print("\n Carbon Footprint Response:\n", footprint_result.output)
+        print("\n Carbon Footprint Response:\n", footprint_result.output)
         ##### END CO2 FOOTPRINT #####
 
 if __name__ == '__main__':
