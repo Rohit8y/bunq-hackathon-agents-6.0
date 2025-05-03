@@ -119,9 +119,3 @@ Your zone is displayed as a dynamic badge in the app.
 Created with 💚 during the Bunq Hackathon.
 --- 
 
-
-Support multiple users + login
-
-
-
-Enable filtering by category or time range
