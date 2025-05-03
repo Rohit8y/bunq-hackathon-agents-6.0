@@ -62,15 +62,15 @@ class Deps:
     bunq_api_key: str | None
 
 
-# model = GeminiModel('gemini-2.0-flash', provider='google-gla')
+model = GeminiModel('gemini-2.0-flash', provider='google-gla')
 
-model = OpenAIModel(
-    "meta/llama-3.1-70b-instruct",
-    provider=OpenAIProvider(
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key="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",
-    )
-)
+# model = OpenAIModel(
+#     "meta/llama-3.2-3b-instruct",
+#     provider=OpenAIProvider(
+#         base_url="https://integrate.api.nvidia.com/v1",
+#         api_key="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",
+#     )
+# )
 bunq_agent = Agent(
     model=model,
     system_prompt=(
@@ -130,7 +130,7 @@ base_agent_Co2_calc = Agent(
 )
 
 get_user_habits_agent = Agent(
-    model,
+    model = model,
     system_prompt=(
         "You are a financial analyst AI. When asked to analyze spending habits:\n"
         "1. Use the `get_fake_transactions` tool to retrieve transactions.\n"
@@ -147,6 +147,16 @@ get_user_habits_agent = Agent(
 
 )
 
+motivation_agent = Agent(
+    model=model,
+    system_prompt=(
+        "You are a friendly climate coach. When told how much CO2 was offset, "
+        "respond with a short and motivating message including a relatable comparison: "
+        "e.g., trees planted, km cycled, or flights avoided. Keep it positive and inspiring!"
+    ),
+    deps_type=Deps,
+    retries=2
+)
 
 @get_user_habits_agent.tool
 async def get_fake_transactions(
@@ -269,6 +279,8 @@ async def main():
         df = df[:10]
         selected_user_id = "John Peter Clarkson"
         user_spending = get_user_spending(df, selected_user_id)
+        raw_amount = user_spending.get("TRANSFER", 0)
+        print(raw_amount)
         print(f"\nRaw Spending for {selected_user_id}:\n", user_spending)
 
         # Let the LLM classify and calculate
@@ -281,6 +293,23 @@ async def main():
         bunq_prompt = f"Transfer the offset_amount {offset_amount} to the green account from main account."
         bunq_result = await bunq_agent.run(bunq_prompt, deps=deps)
         print(bunq_result.output)
+
+        motivational_prompt = (
+            f"I just transferred {offset_amount:.2f} Euros to offest my CO2 emission. "
+            "What’s something inspiring I can compare it to?"
+        )
+        motivation_result = await motivation_agent.run(motivational_prompt, deps=deps)
+        print("\n🌟 Motivation Insight:\n", motivation_result.output)
+        motivation_qote = motivation_result.output
+        return {
+            "habits_output": response.output,
+            "user_spending": user_spending,
+            "co2_output": footprint_result.output,
+            "offset_amount": offset_amount,
+            "green_balance": bunq_result.output.green_account_balance,
+            "motivation": motivation_qote
+        }
+
 
 
 if __name__ == '__main__':
