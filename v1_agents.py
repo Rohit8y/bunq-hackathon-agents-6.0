@@ -11,9 +11,25 @@ import random
 from httpx import AsyncClient
 from pydantic import BaseModel, Field
 from typing import Dict, List
-
+import pandas as pd
 load_dotenv()  
 config = dotenv_values(".env")
+
+class CalculateCO2(BaseModel):
+    total_co2: float
+    co2_per_euro: float
+    zone: str
+
+
+
+###### HELPER FUNCTIONS ######
+def get_user_spending(df: pd.DataFrame, user_id: str) -> Dict[str, float]:
+    """
+    Aggregates spending by category for a specific user.
+    """
+    user_df = df[df['counterparty_name'] == user_id]
+    return user_df.groupby('category')['amount'].sum().to_dict()
+###### END HELPER FUNCTIONS #####
 
 class CategoryPercentagePair(BaseModel):
     """Represents a single spending category and its percentage."""
@@ -48,6 +64,54 @@ base_agent = Agent(
     deps_type=Deps,
     retries=2,
     instrument=True,
+)
+
+
+# Define the agent using LLM for category classification
+base_agent_Co2_calc = Agent(
+    model=model,
+system_prompt = (
+    "You are an intelligent financial sustainability agent. Your task is to analyze a user's spending and calculate their carbon footprint.",
+    "1. First, classify each spending item into one of these 10 broad CO₂ categories:",
+    "   - travel_transport",
+    "   - food_dining",
+    "   - groceries_household",
+    "   - shopping_fashion",
+    "   - housing_utilities",
+    "   - entertainment_subscriptions",
+    "   - health_wellness",
+    "   - education_books",
+    "   - financial_services",
+    "   - charity_gifts",
+    "2. Once classified, apply the following carbon intensity factors (in kg CO₂ per €):",
+    "   - travel_transport: 0.8",
+    "   - food_dining: 0.6",
+    "   - groceries_household: 0.5",
+    "   - shopping_fashion: 0.5",
+    "   - housing_utilities: 0.3",
+    "   - entertainment_subscriptions: 0.3",
+    "   - health_wellness: 0.2",
+    "   - education_books: 0.2",
+    "   - financial_services: 0.1",
+    "   - charity_gifts: 0.05",
+    "3. Then compute:",
+    "   - total CO₂ emissions (sum of all categories)",
+    "   - average CO₂ per € spent",
+    "   - a sustainability zone based on thresholds:",
+    "     - Green: CO₂/€ < 0.4",
+    "     - Yellow: 0.4 ≤ CO₂/€ ≤ 0.6",
+    "     - Red: CO₂/€ > 0.6",
+    "Only reply with JSON object containing only 3 fields: total_co2, co2_per_euro, zone.",
+    "Do not respond with explanations, summaries, or markdown formatting outside this block.",
+    "Politely refuse and redirect if the user asks for unethical or unrelated requests (e.g. how to emit more CO₂)."
+),
+
+
+    deps_type=Deps,
+    retries=2,
+    instrument=True,
+    output_type=CalculateCO2
+
 )
 
 get_user_habits_agent = Agent(
@@ -145,6 +209,20 @@ async def main():
         print(response.output.spending_summary_text)
         print("\nCategory Percentage Distribution:")
         print(response.output.category_percentage_distribution)
+
+        #         ##### CO2 FOOTPRINT #####
+        df = pd.read_csv(r"data/transactions.csv")
+        df = df[:10]
+        selected_user_id = "John Peter Clarkson"
+        user_spending = get_user_spending(df, selected_user_id)
+        print(f"\nRaw Spending for {selected_user_id}:\n", user_spending)
+
+        # Let the LLM classify and calculate
+        formatted_spending = ", ".join([f"{amount} euros on {cat}" for cat, amount in user_spending.items()])
+        footprint_prompt = f"Calculate the carbon footprint for the following spending: {formatted_spending}"
+        footprint_result = await base_agent_Co2_calc.run(footprint_prompt, deps=deps)
+        print("\nCarbon Footprint Response:\n", footprint_result.output)
+    #         ##### END CO2 FOOTPRINT #####
 
 
 if __name__ == '__main__':
