@@ -35,12 +35,13 @@ This dashboard connects financial data with climate awareness using the power of
 ## 📂 Project Structure
 ```
 .
-├── dashboard.py # Streamlit dashboard
-├── v1_agents.py # pydantic agents & logic
-├── wrapper.py # Bunq integration wrapper
+├── src/
+|   |- dashboard.py # Streamlit dashboard
+|   |- bunq_agents.py # Pydantic agents & logic
+|   |- mcp_ # MCP servers
+|   |- utils/wrapper.py  Bunq integration wrapper
 ├── data/ 
 │ └── transactions.csv # Sample transactions
-├── .env # Bunq API key
 ├── requirements.txt
 └── README.md
 ```
