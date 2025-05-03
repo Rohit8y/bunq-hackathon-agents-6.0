@@ -11,7 +11,7 @@ from httpx import AsyncClient
 from pydantic import BaseModel, Field
 from typing import Dict, List
 import pandas as pd
-from src.utils.wrapper import Bunq_SDK_Wrapper
+from utils.wrapper import Bunq_SDK_Wrapper
 
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider

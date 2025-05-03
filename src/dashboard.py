@@ -2,9 +2,8 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import asyncio
-# Adjust the path to import from the parent directory
-
-from v1_agents import main  # main() returns structured data
+import sys
+from bunq_agents import main  # main() returns structured data
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="🌍 Sustainable Spending Dashboard", layout="wide")
