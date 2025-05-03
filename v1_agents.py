@@ -15,7 +15,6 @@ from typing import Dict, List
 load_dotenv()
 config = dotenv_values(".env")
 
-
 class CategoryPercentagePair(BaseModel):
     """Represents a single spending category and its percentage."""
     category: str = Field(description="The name of the spending category.")
@@ -31,12 +30,10 @@ class SpendingAnalysisOutput(BaseModel):
         description="A list of spending categories and the percentage of total spending allocated to each. Excludes Income. Percentages should sum close to 100."
     )
 
-
 @dataclass
 class Deps:
     client: AsyncClient
     bunq_api_key: str | None
-
 
 model = GeminiModel('gemini-2.0-flash', provider='google-gla')
 
@@ -69,7 +66,6 @@ get_user_habits_agent = Agent(
     output_type=SpendingAnalysisOutput
 
 )
-
 
 @get_user_habits_agent.tool
 async def get_fake_transactions(
@@ -123,12 +119,10 @@ async def get_fake_transactions(
 
     return {"transactions": transactions_list}
 
-
 @base_agent.tool
 def get_balance(ctx: "RunContext[Deps]") -> float:
     if ctx.deps.bunq_api_key:
         return 100.0
-
 
 async def main():
     async with AsyncClient() as client:
@@ -146,7 +140,6 @@ async def main():
         print(response.output.spending_summary_text)
         print("\nCategory Percentage Distribution:")
         print(response.output.category_percentage_distribution)
-
 
 if __name__ == '__main__':
     asyncio.run(main())
