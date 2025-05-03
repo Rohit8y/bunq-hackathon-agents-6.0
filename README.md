@@ -76,33 +76,32 @@ pip install -r requirements.txt
 ```
 4. Add a .env File
 Create a .env file in the root folder with:
-
+```
 BUNQ_API_KEY=your_bunq_api_key_here
-🚀 Run the App
+```
+
+5. 🚀 Run the App
+
 ``` bash
 streamlit run dashboard.py
 ```
 
 🌟 Example Insights
+
 🌿 You just offset 25 kg of CO₂ — that’s like planting 1.2 trees!
 💬 Most of your spending goes to groceries and travel. Try biking more often to reduce your footprint.
 🏦 You transferred €40 to your green account. Nice work!
 
-🔐 API Key
-The Bunq SDK requires an API key. Don’t share this publicly!
-
-Use the .env file to safely store your key:
-
-env
-BUNQ_API_KEY=your_api_key_here
 
 🏆 Leaderboard Logic
+
 Users are ranked by their Offset Amount / Spend Ratio.
 The current user is highlighted in light orange for visibility:
 
 The higher the ratio, the better you're doing for the planet 🌎
 
 ✅ Sustainability Zone Logic
+
 🟢 Green: CO₂ per € < 0.4 → Excellent!
 
 🟠 Yellow: 0.4 ≤ CO₂ per € ≤ 0.6 → Room to improve
