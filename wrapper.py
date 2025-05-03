@@ -51,6 +51,9 @@ class Bunq_SDK_Wrapper():
         balance = self.user_context.primary_monetary_account.balance.value
         return balance
 
+    def get_main_account(self):
+        return self.user_context.primary_monetary_account
+
     @staticmethod
     def get_account_balance(account_id: int):
         account_info = MonetaryAccountBankApiObject.get(account_id).value
@@ -60,6 +63,13 @@ class Bunq_SDK_Wrapper():
     def get_account_details(account_id: int):
         account_info = MonetaryAccountBankApiObject.get(account_id).value
         return account_info
+
+    def get_green_account(self):
+        all_accounts = self.get_all_accounts()
+        for account in all_accounts:
+            if account.description == "Green":
+                return account
+        return None
 
     @staticmethod
     def get_account_iban(monetary_account_id: int) -> str:
@@ -172,6 +182,8 @@ class Bunq_SDK_Wrapper():
 if __name__ == "__main__":
     obj = Bunq_SDK_Wrapper()
     # obj.request_money_from_sugar_daddy(amount=400)
-
+    accounts = obj.get_all_accounts()
+    green_account = obj.get_green_account()
     account = obj.get_account_details("2113198")
+
     # logger.info(obj.get_account_balance("2112229"))
