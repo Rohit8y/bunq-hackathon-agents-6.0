@@ -33,26 +33,19 @@ This dashboard connects financial data with climate awareness using the power of
 ---
 
 ## 📂 Project Structure
-
+```
 .
-├── streamlit_app.py # Streamlit dashboard
-├── main.py # LLM agents & logic
+├── dashboard.py # Streamlit dashboard
+├── v1_agents.py # pydantic agents & logic
 ├── wrapper.py # Bunq integration wrapper
-├── data/
+├── data/ 
 │ └── transactions.csv # Sample transactions
 ├── .env # Bunq API key
 ├── requirements.txt
 └── README.md
-
-yaml
-Copy
-Edit
-
----
-
+```
 ## ✨ Features
 
-✅ Analyze real or fake bank transactions  
 ✅ Classify spending into intuitive categories  
 ✅ Calculate total CO₂ emissions and CO₂ per € spent  
 ✅ Assign a sustainability zone (Green / Yellow / Red)  
@@ -69,43 +62,26 @@ Edit
 
 ```bash
 git clone https://github.com/your-username/bunq-hackathon-agents-6.0.git
-```
 cd bunq-hackathon-agents-6.0
+```
 2. Create a Virtual Environment
-bash
-Copy
-Edit
+```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 3. Install Requirements
-bash
-Copy
-Edit
-pip install -r requirements.txt
-Or manually:
+```bash
 
-bash
-Copy
-Edit
-pip install streamlit pandas matplotlib python-dotenv httpx pydantic pydantic_ai
+pip install -r requirements.txt
+```
 4. Add a .env File
 Create a .env file in the root folder with:
 
-env
-Copy
-Edit
 BUNQ_API_KEY=your_bunq_api_key_here
 🚀 Run the App
-bash
-Copy
-Edit
+``` bash
 streamlit run dashboard.py
-
-
-📸 Screenshots
-📊 Spending Breakdown	🟢 Sustainability Zone	🏆 Leaderboard
-
-Add actual images in the docs/ folder using these filenames.
+```
 
 🌟 Example Insights
 🌿 You just offset 25 kg of CO₂ — that’s like planting 1.2 trees!
@@ -118,30 +94,11 @@ The Bunq SDK requires an API key. Don’t share this publicly!
 Use the .env file to safely store your key:
 
 env
-Copy
-Edit
 BUNQ_API_KEY=your_api_key_here
-🧪 Test Data
-You can use:
 
-Real transactions from your Bunq account (if available)
-
-Synthetic transactions generated automatically inside the app
-
-Or edit the included CSV file:
-
-bash
-Copy
-Edit
-data/transactions.csv
 🏆 Leaderboard Logic
-Users are ranked by their Offset / Spend Ratio.
-The current user (John Peter Clarkson ⭐) is highlighted in light orange for visibility:
-
-User	Spent (€)	Offset (€)	Ratio
-John Peter Clarkson ⭐	820.50	60.00	0.073
-Clara	612.10	48.00	0.078
-Alice	700.20	50.00	0.071
+Users are ranked by their Offset Amount / Spend Ratio.
+The current user is highlighted in light orange for visibility:
 
 The higher the ratio, the better you're doing for the planet 🌎
 
@@ -156,7 +113,7 @@ Your zone is displayed as a dynamic badge in the app.
 
 📄 License
 MIT License © 2025
-Created with 💚 during the Bunq Hackathon by [Your Name / Team Name].
+Created with 💚 during the Bunq Hackathon.
 
 🙌 Credits
 Streamlit – for the lightning-fast UI
@@ -168,12 +125,15 @@ Bunq – for enabling carbon offsets and climate impact banking
 Hackathon organizers – for making this project possible
 
 🤝 Contribute
+Combine MPC chat output to dashboard.
 Pull requests are welcome! Some improvement ideas:
 
-Add monthly/weekly trend charts
+Add monthly/weekly trend charts if historical data is present
 
 Export reports as PDF
 
 Support multiple users + login
+
+
 
 Enable filtering by category or time range
