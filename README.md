@@ -85,6 +85,7 @@ BUNQ_API_KEY=your_bunq_api_key_here
 ``` bash
 streamlit run dashboard.py
 ```
+---
 
 🌟 Example Insights
 
@@ -92,6 +93,7 @@ streamlit run dashboard.py
 💬 Most of your spending goes to groceries and travel. Try biking more often to reduce your footprint.
 🏦 You transferred €40 to your green account. Nice work!
 
+---
 
 🏆 Leaderboard Logic
 
@@ -99,6 +101,8 @@ Users are ranked by their Offset Amount / Spend Ratio.
 The current user is highlighted in light orange for visibility:
 
 The higher the ratio, the better you're doing for the planet 🌎
+
+---
 
 ✅ Sustainability Zone Logic
 
@@ -110,26 +114,11 @@ The higher the ratio, the better you're doing for the planet 🌎
 
 Your zone is displayed as a dynamic badge in the app.
 
-📄 License
-MIT License © 2025
+---
+
 Created with 💚 during the Bunq Hackathon.
+--- 
 
-🙌 Credits
-Streamlit – for the lightning-fast UI
-
-Google Gemini / OpenAI – for LLM-based intelligence
-
-Bunq – for enabling carbon offsets and climate impact banking
-
-Hackathon organizers – for making this project possible
-
-🤝 Contribute
-Combine MPC chat output to dashboard.
-Pull requests are welcome! Some improvement ideas:
-
-Add monthly/weekly trend charts if historical data is present
-
-Export reports as PDF
 
 Support multiple users + login
 
