@@ -64,13 +64,6 @@ class Deps:
 
 model = GeminiModel('gemini-2.0-flash', provider='google-gla')
 
-# model = OpenAIModel(
-#     "meta/llama-3.2-3b-instruct",
-#     provider=OpenAIProvider(
-#         base_url="https://integrate.api.nvidia.com/v1",
-#         api_key="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",
-#     )
-# )
 bunq_agent = Agent(
     model=model,
     system_prompt=(

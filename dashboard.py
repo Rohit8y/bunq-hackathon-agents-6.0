@@ -16,6 +16,7 @@ st.markdown(
     "with friendly encouragement and clear visual insights. 💚"
 )
 
+
 # Load and run agents
 with st.spinner("Fetching your financial & sustainability insights..."):
     result = asyncio.run(main())
@@ -31,6 +32,15 @@ motivation_text = result["motivation"]
 # 🧾 Spending Summary
 st.header("📊 Spending Summary")
 st.markdown(f"**🧠 Summary:** {habits_output.spending_summary_text}")
+
+# 🌱 Carbon Footprint Summary
+st.header("🌿 Carbon Impact Summary")
+col1, col2, col3 = st.columns(3)
+col1.metric("🌍 Total CO₂ Emitted", f"{co2_output.total_co2:.2f} kg")
+col2.metric("📉 CO₂ per € Spent", f"{co2_output.co2_per_euro:.3f} kg/€")
+zone_color = "green" if co2_output.zone == "Green" else "orange" if co2_output.zone == "Yellow" else "red"
+col3.markdown(f"### 🔵 Sustainability Zone")
+col3.markdown(f"<span style='color:{zone_color}; font-size: 1.5em; font-weight: bold'>{co2_output.zone}</span>", unsafe_allow_html=True)
 
 # 📊 Category Distribution
 st.header("🧩 Spending Breakdown")
@@ -53,14 +63,7 @@ with st.expander("📂 View Raw Spending Details"):
     raw_spending_df = pd.DataFrame(user_spending.items(), columns=["Category", "Amount (€)"])
     st.dataframe(raw_spending_df, use_container_width=True)
 
-# 🌱 Carbon Footprint Summary
-st.header("🌿 Carbon Impact Summary")
-col1, col2, col3 = st.columns(3)
-col1.metric("🌍 Total CO₂ Emitted", f"{co2_output.total_co2:.2f} kg")
-col2.metric("📉 CO₂ per € Spent", f"{co2_output.co2_per_euro:.3f} kg/€")
-zone_color = "green" if co2_output.zone == "Green" else "orange" if co2_output.zone == "Yellow" else "red"
-col3.markdown(f"### 🔵 Sustainability Zone")
-col3.markdown(f"<span style='color:{zone_color}; font-size: 1.5em; font-weight: bold'>{co2_output.zone}</span>", unsafe_allow_html=True)
+
 
 # 💸 Offset Section
 st.header("💰 CO₂ Offset & Climate Action")
