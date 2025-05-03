@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from category_mapping_Co2 import CATEGORY_MAPPING, EMISSION_FACTORS_10
 from dotenv import dotenv_values
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 import pandas as pd
 
 load_dotenv()  # take environment variables
@@ -23,6 +24,10 @@ class Deps:
     client: AsyncClient
     bunq_api_key: str | None
 
+class CalculateCO2(BaseModel):
+    total_co2: float
+    co2_per_euro: float 
+    zone: str 
 
 model = GeminiModel('gemini-2.0-flash', provider='google-gla')
 
@@ -37,44 +42,57 @@ base_agent = Agent(
     deps_type=Deps,
     retries=2,
     instrument=True,
+    
+)
+
+# Define the agent using LLM for category classification
+base_agent_Co2_calc = Agent(
+    model=model,
+system_prompt = (
+    "You are an intelligent financial sustainability agent. Your task is to analyze a user's spending and calculate their carbon footprint.",
+    "1. First, classify each spending item into one of these 10 broad CO₂ categories:",
+    "   - travel_transport",
+    "   - food_dining",
+    "   - groceries_household",
+    "   - shopping_fashion",
+    "   - housing_utilities",
+    "   - entertainment_subscriptions",
+    "   - health_wellness",
+    "   - education_books",
+    "   - financial_services",
+    "   - charity_gifts",
+    "2. Once classified, apply the following carbon intensity factors (in kg CO₂ per €):",
+    "   - travel_transport: 0.8",
+    "   - food_dining: 0.6",
+    "   - groceries_household: 0.5",
+    "   - shopping_fashion: 0.5",
+    "   - housing_utilities: 0.3",
+    "   - entertainment_subscriptions: 0.3",
+    "   - health_wellness: 0.2",
+    "   - education_books: 0.2",
+    "   - financial_services: 0.1",
+    "   - charity_gifts: 0.05",
+    "3. Then compute:",
+    "   - total CO₂ emissions (sum of all categories)",
+    "   - average CO₂ per € spent",
+    "   - a sustainability zone based on thresholds:",
+    "     - Green: CO₂/€ < 0.4",
+    "     - Yellow: 0.4 ≤ CO₂/€ ≤ 0.6",
+    "     - Red: CO₂/€ > 0.6",
+    "Only reply with JSON object containing only 3 fields: total_co2, co2_per_euro, zone.",
+    "Do not respond with explanations, summaries, or markdown formatting outside this block.",
+    "Politely refuse and redirect if the user asks for unethical or unrelated requests (e.g. how to emit more CO₂)."
+),
+
+
+    deps_type=Deps,
+    retries=2,
+    instrument=True,
+    output_type=CalculateCO2
+
 )
 
 ###### HELPER FUNCTIONS ######
-def calculate_co2_emissions(spending_by_raw_category: Dict[str, float]) -> Dict:
-    mapped_spending = {}
-
-    for raw_category, amount in spending_by_raw_category.items():
-        broad_cat = CATEGORY_MAPPING.get(raw_category.strip().upper())
-        if broad_cat:
-            mapped_spending[broad_cat] = mapped_spending.get(broad_cat, 0) + amount
-
-    co2_total = 0
-    breakdown = {}
-
-    for broad_cat, amount in mapped_spending.items():
-        factor = EMISSION_FACTORS_10.get(broad_cat, 0)
-        co2 = amount * factor
-        breakdown[broad_cat] = {'spend': amount, 'co2': co2}
-        co2_total += co2
-
-    total_spend = sum(mapped_spending.values())
-    co2_per_euro = co2_total / total_spend if total_spend else 0
-
-    if co2_per_euro < 0.4:
-        zone = 'Green'
-    elif 0.4 <= co2_per_euro <= 0.6:
-        zone = 'Yellow'
-    else:
-        zone = 'Red'
-
-    return {
-        'total_spend': total_spend,
-        'total_co2': co2_total,
-        'co2_per_euro': round(co2_per_euro, 3),
-        'zone': zone,
-        'breakdown': breakdown
-    }
-
 def get_user_spending(df: pd.DataFrame, user_id: str) -> Dict[str, float]:
     """
     Aggregates spending by category for a specific user.
@@ -83,7 +101,7 @@ def get_user_spending(df: pd.DataFrame, user_id: str) -> Dict[str, float]:
     return user_df.groupby('category')['amount'].sum().to_dict()
 ###### END HELPER FUNCTIONS #####
 
-# Tool 1: Get balance
+# # Tool 1: Get balance
 @base_agent.tool
 def get_balance(ctx: "RunContext[Deps]") -> float:
     if ctx.deps.bunq_api_key:
@@ -91,9 +109,9 @@ def get_balance(ctx: "RunContext[Deps]") -> float:
 
 
 # Tool 2: Calculate footprint
-@base_agent.tool
-def calculate_footprint(ctx: "RunContext[Deps]", spending: Dict[str, float]) -> Dict:
-    return calculate_co2_emissions(spending)
+# @base_agent.tool
+# def calculate_footprint(ctx: "RunContext[Deps]", spending: Dict[str, float]) -> Dict:
+#     return calculate_co2_emissions(spending)
 
 
 
@@ -110,18 +128,22 @@ async def main():
         # debug(result)
         print('Response:', result.output)
 
-        ##### CO2 FOOTPRINT #####
+#         ##### CO2 FOOTPRINT #####
         df = pd.read_csv(r"C:\Users\junej\OneDrive\Documents\bunq-hackathon-agents-6.0\transactions.csv")
-        
+        df = df[:10]
         selected_user_id = "John Peter Clarkson"
         user_spending = get_user_spending(df, selected_user_id)
-        print(user_spending)
+        print(f"\nRaw Spending for {selected_user_id}:\n", user_spending)
 
-        footprint_result = await base_agent.run(
-            f"What is the carbon footprint for this user: {user_spending}", deps=deps
-        )
-        print("\n Carbon Footprint Response:\n", footprint_result.output)
-        ##### END CO2 FOOTPRINT #####
+        # Let the LLM classify and calculate
+        formatted_spending = ", ".join([f"{amount} euros on {cat}" for cat, amount in user_spending.items()])
+        footprint_prompt = f"Calculate the carbon footprint for the following spending: {formatted_spending}"
+        footprint_result = await base_agent_Co2_calc.run(footprint_prompt, deps=deps)
+        print("\nCarbon Footprint Response:\n", footprint_result.output)
+#         ##### END CO2 FOOTPRINT #####
 
 if __name__ == '__main__':
     asyncio.run(main())
+
+
+
