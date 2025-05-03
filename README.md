@@ -1,6 +1,8 @@
 # 🌍 Sustainable Spending Dashboard
 
-An AI-powered dashboard that analyzes your spending habits, estimates your carbon footprint, and encourages climate-friendly financial decisions — built with **Streamlit**, **LLMs**, and **Bunq**.
+An AI-powered dashboard that analyzes your spending habits, estimates your carbon footprint, and encourages climate-friendly financial decisions — built with **Streamlit**, **LLMs**, and **Bunq**. 
+
+The Dashboard looks like this(cool right!) 
 
 ![Dashboard Screenshot](docs/dashboard_preview1.png)
 ![Dashboard Screenshot](docs/dashboard_preview2.png)
