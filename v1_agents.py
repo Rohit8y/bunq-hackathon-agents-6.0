@@ -14,6 +14,9 @@ from typing import Dict, List
 import pandas as pd
 from wrapper import Bunq_SDK_Wrapper
 
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
 load_dotenv()
 config = dotenv_values(".env")
 
@@ -59,8 +62,15 @@ class Deps:
     bunq_api_key: str | None
 
 
-model = GeminiModel('gemini-2.0-flash', provider='google-gla')
+# model = GeminiModel('gemini-2.0-flash', provider='google-gla')
 
+model = OpenAIModel(
+    "meta/llama-3.1-70b-instruct",
+    provider=OpenAIProvider(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key="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",
+    )
+)
 bunq_agent = Agent(
     model=model,
     system_prompt=(
