@@ -57,6 +57,11 @@ class Bunq_SDK_Wrapper():
         return account_info.balance.value
 
     @staticmethod
+    def get_account_details(account_id: int):
+        account_info = MonetaryAccountBankApiObject.get(account_id).value
+        return account_info
+
+    @staticmethod
     def get_account_iban(monetary_account_id: int) -> str:
         account = MonetaryAccountBankApiObject.get(monetary_account_id).value
 
@@ -166,7 +171,7 @@ class Bunq_SDK_Wrapper():
 
 if __name__ == "__main__":
     obj = Bunq_SDK_Wrapper()
-    val = obj.get_account_iban("2112229")
-    logger.info(val)
-    logger.info(obj.get_account_balance("2112229"))
-    logger.info(obj.get_main_account_balance())
+    # obj.request_money_from_sugar_daddy(amount=400)
+
+    account = obj.get_account_details("2113198")
+    # logger.info(obj.get_account_balance("2112229"))
