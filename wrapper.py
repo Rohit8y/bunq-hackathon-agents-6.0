@@ -1,3 +1,5 @@
+import logging
+
 from bunq.sdk.context.api_context import ApiContext
 from bunq.sdk.context.bunq_context import BunqContext
 from bunq import ApiEnvironmentType
@@ -9,231 +11,162 @@ from bunq.sdk.model.generated.endpoint import RequestInquiryApiObject
 from bunq import Pagination
 from bunq.sdk.model.generated.endpoint import MonetaryAccountBankApiObject
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 load_dotenv()
 
-sandbox_key = os.getenv("BUNQ_SANDBOX_API_KEY")
+sandbox_key = os.getenv("BUNQ_API_KEY")
 
 
-def request_money_from_sugar_daddy(amount: float, currency: str = "EUR", description: str = "You're the best!") -> int:
-    # Validate amount
-    if amount <= 0 or amount > 500:
-        raise ValueError("Amount must be between 0 and 500")
-    
-    amount_str = f"{amount:.2f}"
-    
-    request_id = RequestInquiryApiObject.create(
-        amount_inquired=AmountObject(amount_str, currency),
-        counterparty_alias=PointerObject(
-            type_="EMAIL",
-            value="sugardaddy@bunq.com",
-            name="Sugar Daddy"
-        ),
-        description=description,
-        allow_bunqme=False
-    ).value
-    
+class Bunq_SDK_Wrapper():
+    def __init__(self, context_file="bunq_sandbox_context.conf"):
 
-    return request_id
+        self.api_context = None
+        if not os.path.exists(context_file):
+            logger.info("Creating new API context, could not find old file")
+            self.api_context = ApiContext.create(
+                ApiEnvironmentType.SANDBOX,
+                sandbox_key,
+                "My Test Device"
+            )
 
+            self.api_context.save(context_file)
+        else:
+            logger.info("Existing API context found, restoring...")
+            self.api_context = ApiContext.restore(context_file)
 
-def list_transactions(monetary_account_id= None, page_size=25):
+        BunqContext.load_api_context(self.api_context)
+        self.user_context = BunqContext.user_context()
+        self.user_id = BunqContext.user_context().user_id
 
-    pagination = Pagination()
-    pagination.count = page_size
-    
+        logger.info(f"User ID: {BunqContext.user_context().user_id}")
 
-    params = {"params": pagination.url_params_count_only}
-    if monetary_account_id is not None:
-        params["monetary_account_id"] = monetary_account_id
-    
+    @staticmethod
+    def get_all_accounts():
+        # Get all monetary accounts
+        accounts = MonetaryAccountBankApiObject.list().value
+        return accounts
 
-    all_payments = []
-    response = PaymentApiObject.list(**params)
-    payments = response.value
-    all_payments.extend(payments)
+    def get_main_account_balance(self):
+        balance = self.user_context.primary_monetary_account.balance.value
+        return balance
 
-    pagination_info = response.pagination
-    while pagination_info.has_next_page_assured():
-        
-        next_page_params = {"params": pagination_info.url_params_next_page}
+    @staticmethod
+    def get_account_balance(account_id: int):
+        account_info = MonetaryAccountBankApiObject.get(account_id).value
+        return account_info.balance.value
+
+    @staticmethod
+    def get_account_iban(monetary_account_id: int) -> str:
+        account = MonetaryAccountBankApiObject.get(monetary_account_id).value
+
+        for alias in account.alias:
+            if alias.type_ == "IBAN":
+                return alias.value
+
+        raise ValueError(f"No IBAN found for monetary account ID: {monetary_account_id}")
+
+    @staticmethod
+    def create_monetary_account(description: str, currency: str = "EUR") -> int:
+
+        # Create a new monetary account
+        account_id = MonetaryAccountBankApiObject.create(
+            currency=currency,
+            description=description
+        ).value
+
+        return account_id
+
+    @staticmethod
+    def request_money_from_sugar_daddy(amount: float, currency: str = "EUR", description: str = "You're the best!") -> int:
+        # Validate amount
+        if amount <= 0 or amount > 500:
+            raise ValueError("Amount must be between 0 and 500")
+
+        amount_str = f"{amount:.2f}"
+
+        request_id = RequestInquiryApiObject.create(
+            amount_inquired=AmountObject(amount_str, currency),
+            counterparty_alias=PointerObject(
+                type_="EMAIL",
+                value="sugardaddy@bunq.com",
+                name="Sugar Daddy"
+            ),
+            description=description,
+            allow_bunqme=False
+        ).value
+
+        return request_id
+
+    def transfer_between_accounts(self,
+                                  from_account_id: int,
+                                  to_account_id: int,
+                                  amount: float,
+                                  currency: str = "EUR",
+                                  description: str = "Transfer between accounts"):
+        amount_str = f"{amount:.2f}"
+
+        to_account_iban = self.get_account_iban(to_account_id)
+        to_account = MonetaryAccountBankApiObject.get(to_account_id).value
+        to_account_name = to_account.description
+
+        payment_id = PaymentApiObject.create(
+            amount=AmountObject(amount_str, currency),
+            counterparty_alias=PointerObject(
+                type_="IBAN",
+                value=to_account_iban,
+                name=to_account_name
+            ),
+            description=description,
+            monetary_account_id=from_account_id
+        ).value
+
+        return payment_id
+
+    @staticmethod
+    def list_transactions(monetary_account_id=None, page_size=10):
+        pagination = Pagination()
+        pagination.count = page_size
+
+        params = {"params": pagination.url_params_count_only}
         if monetary_account_id is not None:
-            next_page_params["monetary_account_id"] = monetary_account_id
-            
+            params["monetary_account_id"] = monetary_account_id
 
-        response = PaymentApiObject.list(**next_page_params)
-        next_page_payments = response.value
-        all_payments.extend(next_page_payments)
-        
-        
+        all_payments = []
+        response = PaymentApiObject.list(**params)
+        payments = response.value
+        all_payments.extend(payments)
+
         pagination_info = response.pagination
+        while pagination_info.has_next_page_assured():
 
-    formatted_transactions = []
-    for payment in all_payments:
-        transaction = {
-            "id": payment.id_,
-            "amount": payment.amount.value,
-            "currency": payment.amount.currency,
-            "description": payment.description,
-            "date": payment.created,
-        }
-        formatted_transactions.append(transaction)
-    
-    return formatted_transactions
+            next_page_params = {"params": pagination_info.url_params_next_page}
+            if monetary_account_id is not None:
+                next_page_params["monetary_account_id"] = monetary_account_id
 
-def print_transactions(transactions) -> None:
+            response = PaymentApiObject.list(**next_page_params)
+            next_page_payments = response.value
+            all_payments.extend(next_page_payments)
 
-    if not transactions:
-        print("No transactions found.")
-        return
-        
-    print(f"Found {len(transactions)} transactions:")
-    print("-" * 80)
-    for tx in transactions:
-        print(f"ID: {tx['id']}")
-        print(f"Date: {tx['date']}")
-        print(f"Amount: {tx['amount']} {tx['currency']}")
-        print(f"Description: {tx['description']}")
-        print("-" * 80)
+            pagination_info = response.pagination
 
+        formatted_transactions = []
+        for payment in all_payments:
+            transaction = {
+                "id": payment.id_,
+                "amount": payment.amount.value,
+                "currency": payment.amount.currency,
+                "description": payment.description,
+                "date": payment.created,
+            }
+            formatted_transactions.append(transaction)
 
-def create_monetary_account(description: str, currency: str = "EUR") -> int:
+        return formatted_transactions
 
-    from bunq.sdk.model.generated.endpoint import MonetaryAccountBankApiObject
-    
-    # Create a new monetary account
-    account_id = MonetaryAccountBankApiObject.create(
-        currency=currency,
-        description=description
-    ).value
-
-    return account_id
-
-
-def get_all_monetary_accounts():
-
-    
-    # Get all monetary accounts
-    accounts = MonetaryAccountBankApiObject.list().value
-    
-    # Format account information
-    formatted_accounts = []
-    for account in accounts:
-        formatted_account = {
-            "id": account.id_,
-            "description": account.description,
-            "balance": account.balance.value,
-            "currency": account.balance.currency,
-            "status": account.status,
-            "is_primary": hasattr(account, "is_primary") and account.is_primary
-        }
-        formatted_accounts.append(formatted_account)
-        
-    return formatted_accounts
-
-
-def print_accounts(accounts) -> None:
-
-    if not accounts:
-        print("No accounts found.")
-        return
-        
-    print(f"Found {len(accounts)} accounts:")
-    print("-" * 80)
-    for acc in accounts:
-        primary_marker = " (PRIMARY)" if acc.get("is_primary", False) else ""
-        print(f"ID: {acc['id']}{primary_marker}")
-        print(f"Description: {acc['description']}")
-        print(f"Balance: {acc['balance']} {acc['currency']}")
-        print(f"Status: {acc['status']}")
-        print("-" * 80)
-
-
-def get_account_iban(monetary_account_id: int) -> str:
-
-    account = MonetaryAccountBankApiObject.get(monetary_account_id).value
-    
-
-    for alias in account.alias:
-        if alias.type_ == "IBAN":
-            return alias.value
-            
-    raise ValueError(f"No IBAN found for monetary account ID: {monetary_account_id}")
-
-
-
-def transfer_between_accounts(
-    from_account_id: int, 
-    to_account_id: int, 
-    amount: float, 
-    currency: str = "EUR", 
-    description: str = "Transfer between accounts"):
-
-
-    amount_str = f"{amount:.2f}"
-
-    to_account_iban = get_account_iban(to_account_id)
-    to_account = MonetaryAccountBankApiObject.get(to_account_id).value
-    to_account_name = to_account.description
-    
-    payment_id = PaymentApiObject.create(
-        amount=AmountObject(amount_str, currency),
-        counterparty_alias=PointerObject(
-            type_="IBAN", 
-            value=to_account_iban,
-            name=to_account_name
-        ),
-        description=description,
-        monetary_account_id=from_account_id  
-    ).value
-
-    return payment_id
 
 if __name__ == "__main__":
-
-    api_context = ApiContext.create(
-    ApiEnvironmentType.SANDBOX,
-    sandbox_key,
-    "My Test Device"
-    )
-
-    api_context.save("bunq_sandbox_context.conf")
-
-
-    BunqContext.load_api_context(api_context)
-
-    print("API context created and saved successfully!")
-    print(f"User ID: {BunqContext.user_context().user_id}")
-
-
-    # request_id = request_money_from_sugar_daddy(100)
-    # print(f"Created request with ID: {request_id}")
-    
-
-    # account_id = create_monetary_account("Vacation Savings")
-    # print(f"Created new account with ID: {account_id}")
-
-
-    accounts = get_all_monetary_accounts()
-
-
-    #transactions = list_transactions("2108117")
-
-    # print_transactions(transactions)
-
-    # iban = get_account_iban("2112229")
-
-    # transfer_between_accounts("2108116","2112229",200.0,)
-
-    
-
-
-
-    
-
-    
-
-
-
-
-
-
+    obj = Bunq_SDK_Wrapper()
+    val = obj.get_account_iban("2112229")
+    logger.info(val)
+    logger.info(obj.get_account_balance("2112229"))
+    logger.info(obj.get_main_account_balance())
